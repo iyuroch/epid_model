@@ -1,13 +1,9 @@
-// TODO: consider mutation for infection data
 // TODO: consider being immune to desease
 // TODO: bacteriocarrier with some chance to become
 // TODO: check desease status
 // TODO: multiple infections
-// TODO: review make infected - if deseased is already then reinfected?!
-
-pub mod infection {
-
-}
+// TODO: speed of individual setter (we can change it for decrease)
+// TODO: consider mutation for infection dat
 
 pub mod individual {
     extern crate rand;
@@ -169,7 +165,7 @@ pub mod individual {
         max_x: i32,
         max_y: i32,
         speed: u32,
-        
+
         desease_day: Option<u32>,
         contagious: bool,
         inf_data: InfectionData,
@@ -290,5 +286,52 @@ pub mod individual {
             self.develop_inf();
 
         }
+    }
+}
+
+pub mod individual_group {
+    use super::individual::{Individual, InfectionData};
+
+    pub struct IndividualGroup {
+        group: Vec<Individual>,
+        inf_data: InfectionData,
+        group_size: u32,
+
+        field_max_x: u32,
+        field_max_y: u32,
+    }
+
+    impl IndividualGroup {
+
+        pub fn new (
+
+        ) -> IndividualGroup {
+            IndividualGroup {
+
+            }
+        }
+
+        pub fn get_size(&self) -> u32 {
+            self.group_size
+        }
+
+        pub fn get_positions(&self) -> Vec<(u32, u32)> {
+            self.group.into_iter().map(
+                |individual| {
+                    individual.get_position()
+                }
+            ).collect()
+        }
+
+        pub fn make_turns(&self, turns_num: u32) {
+            self.group.into_iter().map(
+                |individual| {
+                    for _ in 0..turns_num {
+                        individual.make_turn();
+                    }
+                }
+            ).collect();
+        }
+
     }
 }
