@@ -1,8 +1,9 @@
 // TODO: consider mutation for infection data
-// TODO: immune
+// TODO: consider being immune to desease
 // TODO: bacteriocarrier with some chance to become
-// TODO: test
 // TODO: check desease status
+// TODO: multiple infections
+// TODO: review make infected - if deseased is already then reinfected?!
 
 pub mod infection {
 
@@ -105,6 +106,56 @@ pub mod individual {
         new_ind.walk((49, 49));
         println!("{:?}", new_ind);
         assert!(new_ind.x == 50 && new_ind.y == 50);
+
+        new_ind.walk((150, 150));
+        assert!(new_ind.x == 0 && new_ind.y == 0);
+
+        new_ind.walk((-200, -200));
+        assert!(new_ind.x == 0 && new_ind.y == 0);
+    }
+
+    #[test]
+    fn test_infected() {
+        let inf_data = InfectionData::new(
+            2, 0.8, 1, 2,
+        );
+
+        let mut new_ind = Individual::new(
+            0, 0, 2, None,
+            100, 100, inf_data,
+        );
+
+        new_ind.make_infected();
+        assert_eq!(0, new_ind.desease_day.unwrap());
+
+        new_ind.desease_day = Some(2);
+        new_ind.make_infected();
+        assert_eq!(2, new_ind.desease_day.unwrap());
+    }
+
+    #[test]
+    fn test_inf_progress() {
+        let inf_data = InfectionData::new(
+            2, 0.8, 1, 2,
+        );
+
+        let mut new_ind = Individual::new(
+            0, 0, 2, None,
+            100, 100, inf_data,
+        );
+        new_ind.make_infected();
+
+        new_ind.develop_inf();
+        assert_eq!(new_ind.desease_day.unwrap(), 1);
+        assert_eq!(new_ind.contagious, false);
+
+        new_ind.develop_inf();
+        assert_eq!(new_ind.desease_day.unwrap(), 2);
+        assert_eq!(new_ind.contagious, true);
+
+        new_ind.develop_inf();
+        assert_eq!(new_ind.desease_day.is_none(), true);
+        assert_eq!(new_ind.contagious, false);
     }
 
     #[derive(Debug)]
@@ -113,15 +164,15 @@ pub mod individual {
         // desease_day - we can use this to see if individual
         // is contag.
         // speed - how much steps he can make in one turn
-        pub x: u32,
-        pub y: u32,
-        desease_day: Option<u32>,
-        speed: u32,
-        // this defines bound for individual position
+        x: u32,
+        y: u32,
         max_x: i32,
         max_y: i32,
+        speed: u32,
+        
+        desease_day: Option<u32>,
+        contagious: bool,
         inf_data: InfectionData,
-        pub contagious: bool,
     }
 
     impl Individual {
@@ -164,30 +215,35 @@ pub mod individual {
             }
         }
 
+        #[allow(dead_code)]
+        pub fn get_position(&self) -> (u32, u32) {
+            (self.x, self.y)
+        }
+
+        #[allow(dead_code)]
+        pub fn get_status(&self) -> bool {
+            self.contagious
+        }
+
         // #[allow(dead_code)]
         fn walk(&mut self, diff: (i32, i32)) {
             // should be able to move individual
             // on the field
-            println!("{:?}", diff);
-            let x_diff = diff.0;
-            let y_diff = diff.1;
-            let new_x_pos = self.x as i32 + x_diff;
-            let new_y_pos = self.y as i32 + y_diff;
+            let (x_diff, y_diff) = diff;
+            let new_x_pos = (self.x as i32 + x_diff) % self.max_x;
+            let new_y_pos = (self.y as i32 + y_diff) % self.max_y;
 
             if new_x_pos < 0 {
-                self.x += (self.max_x + new_x_pos % self.max_x) as u32;
-            } else if new_x_pos > self.max_x as i32 {
-                self.x += (new_x_pos % self.max_x) as u32;
+                self.x = (self.max_x + new_x_pos ) as u32;
+            } else {
+                self.x = new_x_pos as u32;
             }
 
             if new_y_pos < 0 {
-                self.y += (100 + new_y_pos % 100) as u32;
-            } else if new_y_pos > self.max_x as i32 {
-                self.y += (new_y_pos % 100) as u32;
+                self.y = (self.max_y + new_y_pos) as u32;
+            } else {
+                self.y = new_y_pos as u32;
             }
-
-            self.x = (self.x as i32 % self.max_x) as u32;
-            self.y = (self.y as i32 % self.max_y) as u32;
         }
 
         fn generate_move(&self) -> (i32, i32) {
@@ -199,11 +255,40 @@ pub mod individual {
         }
 
         #[allow(dead_code)]
+        pub fn make_infected(&mut self) {
+            // if individual already infected - 
+            // we can ignore this
+            match self.desease_day {
+                Some(_) => {},
+                None => self.desease_day = Some(0),
+            }
+        }
+
+        fn develop_inf(&mut self) {
+            // if individual is sick - 
+            // desease progress each turn
+            match self.desease_day {
+                Some(mut x) => {
+                    x += 1;
+                    self.desease_day = Some(x);
+                    if x > self.inf_data.incubation_period {
+                        self.contagious = true;
+                    }
+                    if x > self.inf_data.desease_duration {
+                        self.contagious = false;
+                        self.desease_day = None;
+                    }
+                },
+                None => {},
+            }
+        }
+
+        #[allow(dead_code)]
         pub fn make_turn(&mut self) {
             
             self.walk(self.generate_move());
-            // implement incrementation and interchanging
-            // contagious, day of desease, latence period
+            self.develop_inf();
+
         }
     }
 }
