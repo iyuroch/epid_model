@@ -324,13 +324,11 @@ pub mod individual_group {
         }
 
         pub fn make_turns(&self, turns_num: u32) {
-            self.group.into_iter().map(
-                |individual| {
-                    for _ in 0..turns_num {
-                        individual.make_turn();
-                    }
-                }
-            ).collect();
+            for _ in 0..turns_num {
+                self.group.into_iter().map(
+                    |individual| individual.make_turn()
+                ).collect();
+            }
         }
 
     }
