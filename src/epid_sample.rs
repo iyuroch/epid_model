@@ -4,6 +4,13 @@
 // TODO: multiple infections
 // TODO: speed of individual setter (we can change it for decrease)
 // TODO: consider mutation for infection dat
+// TODO: individalgroup perfect forwarding initializer
+// TODO: consider box for vector of individuals
+// TODO: extend individual group intitalization
+// TODO: check spread_desease - we can do it faster
+// TODO: get_status - not clears
+// TODO: random??
+
 
 pub mod individual {
     extern crate rand;
@@ -100,7 +107,6 @@ pub mod individual {
         assert!(new_ind.x == 1 && new_ind.y == 1);
 
         new_ind.walk((49, 49));
-        println!("{:?}", new_ind);
         assert!(new_ind.x == 50 && new_ind.y == 50);
 
         new_ind.walk((150, 150));
@@ -165,7 +171,6 @@ pub mod individual {
         max_x: i32,
         max_y: i32,
         speed: u32,
-
         desease_day: Option<u32>,
         contagious: bool,
         inf_data: InfectionData,
@@ -214,6 +219,11 @@ pub mod individual {
         #[allow(dead_code)]
         pub fn get_position(&self) -> (u32, u32) {
             (self.x, self.y)
+        }
+
+        #[allow(dead_code)]
+        pub fn get_des_day(&self) -> Option<u32> {
+            self.desease_day
         }
 
         #[allow(dead_code)]
@@ -281,55 +291,211 @@ pub mod individual {
 
         #[allow(dead_code)]
         pub fn make_turn(&mut self) {
-            
             self.walk(self.generate_move());
             self.develop_inf();
-
         }
     }
 }
 
 pub mod individual_group {
+
+    extern crate rand;
+    use rand::Rng;
+
     use super::individual::{Individual, InfectionData};
 
     pub struct IndividualGroup {
         group: Vec<Individual>,
         inf_data: InfectionData,
         group_size: u32,
+        field_max_x: i32,
+        field_max_y: i32,
+    }
 
-        field_max_x: u32,
-        field_max_y: u32,
+    #[test]
+    fn test_constructor() {
+        let inf_num = 3;
+        let inf_data = InfectionData::new(
+            2, 0.8, 1, 2,
+        );
+
+        let group = IndividualGroup::new(
+            100, 100, 2,
+            10, inf_num , inf_data,
+        );
+
+        let ind_data = group.get_individuals();
+        let inf_num_count = ind_data.into_iter().filter(
+            |data| {
+                data.1 == true
+            }
+        ).count();
+        assert_eq!(inf_num as usize, inf_num_count);
+    }
+
+    #[test]
+    #[should_panic(expected = "inf_num \
+             cannot be bigger than group_size")]
+    fn test_fail_constructor() {
+        let inf_data = InfectionData::new(
+            2, 0.8, 1, 2,
+        );
+
+        IndividualGroup::new(
+            100, 100, 2,
+            3, 10,
+            inf_data,
+        );
+    }
+
+    #[test]
+    fn test_spread_desease() {
+        // if we have no other place to 
+        // go - individuals in this case close to each other
+        // and all get infected
+        let inf_data = InfectionData::new(
+            2, 1.0, 1, 2,
+        );
+
+        let mut group = IndividualGroup::new(
+            3, 3, 2,
+            9, 0, inf_data,
+        );
+
+        group.spread_desease();
+        let ind_data = group.get_data();
+        let inf_num_count = ind_data.into_iter().filter(
+            |ind| {
+                ind.get_des_day().is_some()
+            }
+        ).count();
+
+        assert_eq!(9, inf_num_count);
     }
 
     impl IndividualGroup {
 
+        #[allow(dead_code)]
         pub fn new (
-
+            // inf_num - amount of infected individuals
+            max_x: i32,
+            max_y: i32,
+            ind_speed: u32,
+            group_size: u32,
+            mut inf_num: u32,
+            inf_data: InfectionData,
         ) -> IndividualGroup {
-            IndividualGroup {
+            assert!(inf_num <= group_size, "inf_num \
+             cannot be bigger than group_size");
 
+            let mut rng = rand::thread_rng();
+            let mut group = Vec::with_capacity(group_size as usize);
+
+            for _ in 0..group_size {
+                
+                let x_pos = rng.gen_range(0, max_x) as u32;
+                let y_pos = rng.gen_range(0, max_y) as u32;
+
+                let mut should_inf = None;
+
+                if inf_num > 0 {
+                    inf_num -= 1;
+                    should_inf = Some(inf_data.incubation_period + 1);
+                }
+                
+                group.push(Individual::new(
+                    x_pos, y_pos, ind_speed,
+                    should_inf, max_x, max_y,
+                    inf_data,
+                ));
+            }
+            IndividualGroup {
+                group: group,
+                inf_data: inf_data,
+                group_size: group_size,
+                field_max_x: max_x,
+                field_max_y: max_y,
             }
         }
 
+
+        #[allow(dead_code)]
         pub fn get_size(&self) -> u32 {
             self.group_size
         }
 
-        pub fn get_positions(&self) -> Vec<(u32, u32)> {
-            self.group.into_iter().map(
+        #[allow(dead_code)]
+        pub fn get_inf_data(&self) -> InfectionData {
+            self.inf_data
+        }
+
+        #[allow(dead_code)]
+        pub fn get_individuals(&self) -> Vec<((u32, u32), bool, Option<u32>)> {
+            self.group.iter().map(
                 |individual| {
-                    individual.get_position()
+                    (individual.get_position(),
+                     individual.get_status(),
+                     individual.get_des_day(),
+                    )
                 }
             ).collect()
         }
 
-        pub fn make_turns(&self, turns_num: u32) {
-            for _ in 0..turns_num {
-                self.group.into_iter().map(
-                    |individual| individual.make_turn()
-                ).collect();
+        #[allow(dead_code)]
+        pub fn get_data(&self) -> &Vec<Individual> {
+            &self.group
+        }
+
+        fn spread_desease(&mut self) {
+            let mut rng = rand::thread_rng();
+
+            let mut inf_area = vec![
+                                vec![0; self.field_max_x as usize]; 
+                                self.field_max_y as usize
+                            ];
+            let infected: Vec<&Individual> = self.group.iter().filter(
+                |individual| individual.get_status() == false
+            ).collect();
+
+            for ind in infected.into_iter() {
+                let (x, y) = ind.get_position();
+
+                let x_st_range = x as i32 - self.inf_data.contagious_range as i32;
+                let x_end_range = x as i32 + self.inf_data.contagious_range as i32;
+
+                let y_st_range = y as i32 - self.inf_data.contagious_range as i32;
+                let y_end_range = y as i32 + self.inf_data.contagious_range as i32;
+
+                for x in x_st_range..x_end_range {
+                    for y in y_st_range..y_end_range {
+                        if (x >= 0 && x < self.field_max_x) && 
+                            (y >= 0 && y< self.field_max_y) {
+                            inf_area[y as usize][x as usize] = 1;
+                        }
+                    }
+                }
+            }
+
+            for ind in self.group.iter_mut() {
+                if ind.get_des_day().is_none() {
+                    let (x, y) = ind.get_position();
+                    if inf_area[y as usize][x as usize] == 1 {
+                        if rng.gen_range(0.0, 1.0) < self.inf_data.contagious_ind {
+                            ind.make_infected();
+                        }
+                    }
+                }
             }
         }
 
+        #[allow(dead_code)]
+        pub fn make_turns(&mut self, turns_num: u32) {
+            for _ in 0..turns_num {
+                self.spread_desease();
+                self.group.iter_mut().for_each(
+                    |individual| individual.make_turn()
+                );
+            }
+        }
     }
 }
