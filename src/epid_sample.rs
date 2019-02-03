@@ -10,6 +10,12 @@
 // TODO: check spread_desease - we can do it faster
 // TODO: get_status - not clears
 // TODO: random??
+// TODO: restriction to contagious index
+// TODO: running away from contagious
+
+// TODO: birthray/deathrate
+// TODO: immune system fighting off
+// TODO: vaccination
 
 
 pub mod individual {
@@ -257,7 +263,7 @@ pub mod individual {
             let range = (1 * self.speed, -1 * self.speed as i32);
             let x_diff = rng.gen_range(range.0 as i32, range.1 as i32);
             let y_diff = rng.gen_range(range.0 as i32, range.1 as i32);
-            return (x_diff, y_diff);
+            return (x_diff, y_diff)
         }
 
         #[allow(dead_code)]
