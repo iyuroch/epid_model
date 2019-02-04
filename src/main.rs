@@ -1,35 +1,47 @@
 // TODO: reorganize this as separate crate
 // TODO: apis for
+// TODO: handler state per connection
+
 extern crate env_logger;
 extern crate actix;
 extern crate actix_web;
 
+#[macro_use] 
+extern crate serde_derive;
+
 use std::sync::{Arc, Mutex};
-use actix_web::{middleware, server, App, HttpRequest, HttpResponse};
+use actix_web::{error, middleware, server, App, HttpRequest, Json, fs::NamedFile};
+
+use error::{Error};
+
 
 mod epid_sample;
-
 use epid_sample::individual::{InfectionData};
 use epid_sample::individual_group::IndividualGroup;
+
+
+#[derive(Serialize)]
+struct MyGroup {
+    ind_group: Vec<((u32, u32), bool, Option<u32>)>,
+}
 
 struct AppState {
     ind_group: Arc<Mutex<IndividualGroup>>,
 }
 
-fn index(req: &HttpRequest<AppState>) -> HttpResponse {
+fn api(req: &HttpRequest<AppState>) -> Result<Json<MyGroup>, Error> {
     println!("{:?}", req);
     let mut ind_group = req.state().ind_group.lock().unwrap();
-    // let mut ind_group = req.state().ind_group.lock().unwrap();
-    // ind_group.make_turns(1);
-    // req.state().ind_group.lock().unwrap().make_turns(1);
-    // let data = ind_group.get_individuals();
     ind_group.make_turns(1);
-    // println!("{:?}", ind_group.get_individuals());
 
-    HttpResponse::Ok().body(
-        format!("Population: {:?}", 
-            "Yo")
-    )
+    Ok(Json(MyGroup {
+        ind_group: ind_group.get_individuals(),
+    }))
+}
+
+fn index(_req: &HttpRequest<AppState>) -> Result<NamedFile, Error> {
+    // 
+    Ok(NamedFile::open("/home/yurochko/Main/study/epid_model/src/index.html")?)
 }
 
 fn main() {
@@ -48,11 +60,10 @@ fn main() {
 
     //move is necessary to give closure below ownership of counter
     server::new(move || {
-        App::with_state(AppState{ind_group: new_ind.clone()}) // <- create app with shared state
-            // enable logger
+        App::with_state(AppState{ind_group: new_ind.clone()})
             .middleware(middleware::Logger::default())
-            // register simple handler, handle all methods
             .resource("/", |r| r.f(index))
+            .resource("/api", |r| r.f(api))
     }).bind("127.0.0.1:8080")
         .unwrap()
         .start();

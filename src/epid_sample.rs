@@ -12,6 +12,7 @@
 // TODO: random??
 // TODO: restriction to contagious index
 // TODO: running away from contagious
+// TODO: concurrency
 
 // TODO: birthray/deathrate
 // TODO: immune system fighting off
@@ -260,9 +261,9 @@ pub mod individual {
 
         fn generate_move(&self) -> (i32, i32) {
             let mut rng = rand::thread_rng();
-            let range = (1 * self.speed, -1 * self.speed as i32);
-            let x_diff = rng.gen_range(range.0 as i32, range.1 as i32);
-            let y_diff = rng.gen_range(range.0 as i32, range.1 as i32);
+            let range = (-1 * self.speed as i32, 1 * self.speed);
+            let x_diff = rng.gen_range(range.0 as i32, range.1 as i32 + 1);
+            let y_diff = rng.gen_range(range.0 as i32, range.1 as i32 + 1);
             return (x_diff, y_diff)
         }
 
