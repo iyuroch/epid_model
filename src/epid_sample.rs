@@ -13,6 +13,8 @@
 // TODO: restriction to contagious index
 // TODO: running away from contagious
 // TODO: concurrency
+// TODO: cargo test - rewrite
+// TODO: status -> can be useful
 
 // TODO: birthray/deathrate
 // TODO: immune system fighting off

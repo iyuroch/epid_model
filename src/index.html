@@ -1,3 +1,8 @@
+<!--
+    TODO: opacity depends on days of desease
+    TODO: configurable from menu group characteristic
+    TODO: rect radius depends
+ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,7 +33,15 @@ function get_circles() {
 }
 
 function draw_circles(group_data) {
-    var group_data_array = group_data["ind_group"];
+    var group_data_array = group_data["ind_group"]
+
+    var group_data_array = group_data_array.map(
+        function(x, idx) {
+            x.id = idx;
+            return x;
+        }
+    );
+
 
     var t = d3.transition()
         .ease(d3.easeQuadInOut)
@@ -50,29 +63,50 @@ function draw_circles(group_data) {
         .attr("cy", function (d) { return d[0][1] * 6; })
         .attr("r", 10)
         .style("fill", "purple")
-        .style("stroke", d => d[1] ? "black" : undefined)
-        .attr("stroke-width", 3);
+        .style("fill-opacity", 0)
+        .attr("stroke", "black")
+        .attr("stroke-width", 2);
 
     circles
-        .each(function(d, idx) {
-            var circle = d3.select(this);
-
-            if (d[1]) {
-                // console.log(d[1]);
-                // console.log(circle);
-                circle.append("rect")
-                    .style("width", 18)
-                    .style("height", 18)
-                    .attr("fill", "red");
-            } else {
-                circle.select("rect").remove();
-            }
-        })
-        .attr("stroke-linecap", "square")
-        .style("stroke", d => d[1] ? "black" : undefined)
+        .style("fill-opacity", function (d) { 
+                console.log(d[2]/15)
+                d[2]/15
+            } )
         .transition(t)
         .attr("cx", function (d, i) { return d[0][0] * 6; })
-        .attr("cy", function (d) { return d[0][1] * 6; });
+        .attr("cy", function (d) { return d[0][1] * 6; })
+
+    var rects = svgContainer
+            .selectAll("rect")
+            .data(group_data_array.filter(
+                function(d) {
+                    return d[1];
+                }),
+                function(d) {
+                    return d.id;
+                })
+    
+    setTimeout(function() {
+        rects
+        .enter()
+        .append("rect")
+        .attr("x", function (d) { return d[0][0] * 6 - 10; })
+        .attr("y", function (d) { return d[0][1] * 6 - 10; })
+        .attr("stroke", "#2378ae")
+        .attr("height", 20)
+        .attr("width", 20)
+        .style("fill", "rgba(0,0,0,0)");
+    }, 1000)
+    
+    rects
+        .exit()
+        .remove()
+
+    rects
+        .transition(t)
+        .attr("x", function (d, i) { return d[0][0] * 6 - 10; })
+        .attr("y", function (d) { return d[0][1] * 6 - 10; })
+
 }
 </script>
 </body>
