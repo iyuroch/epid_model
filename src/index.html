@@ -7,52 +7,72 @@
     <title>Document</title>
 </head>
 <body>
-    <h1>Yo</h1>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script>
 
+var old_coordinates = d3.local()
 
 get_circles();
 
 function get_circles() {
     const Http = new XMLHttpRequest();
     const url='/api';
-    Http.open("GET", url);
-    Http.send();
-    Http.onreadystatechange=(e)=>{
-        draw_circles(JSON.parse(Http.responseText));
-        get_circles();
+    Http.open("GET", url, false);
+    Http.send(null);
+
+    if (Http.status === 200) {
+        draw_circles(JSON.parse(Http.responseText))
     }
+
+    setTimeout(get_circles, 1000);
 }
 
 function draw_circles(group_data) {
     var group_data_array = group_data["ind_group"];
 
-    group_data_array.forEach(element => {
-        console.log(element);
-    });
+    var t = d3.transition()
+        .ease(d3.easeQuadInOut)
+        .duration(1000);
 
-    var svgContainer = d3.select("body").append("svg")
-                                        .attr("width", 500)
-                                        .attr("height", 500);
+    var svgContainer = d3.select("svg")
+    if (svgContainer.empty()) {
+        var svgContainer = d3.select("body").append("svg")
+                                            .attr("width", 600)
+                                            .attr("height", 600);
+    }
 
     var circles = svgContainer.selectAll("circle")
                             .data(group_data_array)
-                            .enter()
-                            .append("circle");
 
-    var circleAttributes = circles
-                        .attr("cx", function (d) { return d[0][0] * 5; })
-                        .attr("cy", function (d) { return d[0][1] * 5; })
-                        .attr("r", 5 )
-                        .style("fill", "purple");
-                        // .style("fill", function(d) {
-                        //     var returnColor;
-                        //     if (d === 30) { returnColor = "green";
-                        //     } else if (d === 70) { returnColor = "purple";
-                        //     } else if (d === 110) { returnColor = "red"; }
-                        //     return returnColor;
-                        // });
+    circles.enter()
+        .append("circle")
+        .attr("cx", function (d) { return d[0][0] * 6; })
+        .attr("cy", function (d) { return d[0][1] * 6; })
+        .attr("r", 10)
+        .style("fill", "purple")
+        .style("stroke", d => d[1] ? "black" : undefined)
+        .attr("stroke-width", 3);
+
+    circles
+        .each(function(d, idx) {
+            var circle = d3.select(this);
+
+            if (d[1]) {
+                // console.log(d[1]);
+                // console.log(circle);
+                circle.append("rect")
+                    .style("width", 18)
+                    .style("height", 18)
+                    .attr("fill", "red");
+            } else {
+                circle.select("rect").remove();
+            }
+        })
+        .attr("stroke-linecap", "square")
+        .style("stroke", d => d[1] ? "black" : undefined)
+        .transition(t)
+        .attr("cx", function (d, i) { return d[0][0] * 6; })
+        .attr("cy", function (d) { return d[0][1] * 6; });
 }
 </script>
 </body>

@@ -53,7 +53,7 @@ fn main() {
     );
 
     let new_ind = Arc::new(Mutex::new(IndividualGroup::new(
-        100, 100, 2, 30, 5, inf_data,
+        100, 100, 6, 30, 5, inf_data,
     )));
 
     let sys = actix::System::new("ws-example");

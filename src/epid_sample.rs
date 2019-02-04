@@ -243,18 +243,14 @@ pub mod individual {
             // should be able to move individual
             // on the field
             let (x_diff, y_diff) = diff;
-            let new_x_pos = (self.x as i32 + x_diff) % self.max_x;
-            let new_y_pos = (self.y as i32 + y_diff) % self.max_y;
+            let new_x_pos = self.x as i32 + x_diff;
+            let new_y_pos = self.y as i32 + y_diff;
 
-            if new_x_pos < 0 {
-                self.x = (self.max_x + new_x_pos ) as u32;
-            } else {
+            if new_x_pos >= 0 && new_x_pos < self.max_x {
                 self.x = new_x_pos as u32;
             }
 
-            if new_y_pos < 0 {
-                self.y = (self.max_y + new_y_pos) as u32;
-            } else {
+            if new_y_pos >= 0 && new_y_pos < self.max_y {
                 self.y = new_y_pos as u32;
             }
         }
