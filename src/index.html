@@ -12,102 +12,150 @@
     <title>Document</title>
 </head>
 <body>
+    <svg></svg>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script>
+    // TODO: add inf_metadata setter
+    // TODO: add plot of infected/health
+    // TODO: add label for inf metadata
 
-var old_coordinates = d3.local()
+    function EpidPlot(parent_el, height, width) {
+        this.margin = {top: 20, right: 80, bottom: 100, left: 30}
 
-get_circles();
+        this.height = height - this.margin.top - this.margin.bottom;
+        this.width = width - this.margin.right - this.margin.left;
+        this.plot = d3.select(parent_el).attr("height", this.height + 
+                    this.margin.top + this.margin.bottom)
+                .attr("width", this.width + 
+                    this.margin.right + this.margin.left)
+            .append("g")
+                .attr("transform",
+                    "translate(" + this.margin.left + 
+                        "," + this.margin.top + ")");
+    }
 
-function get_circles() {
+    EpidPlot.prototype.set_inf_data = function(metadata) {
+        this.inf_data = metadata["meta_data"];
+        console.log(this.inf_data);
+    }
+
+    EpidPlot.prototype.set_scales = function() {
+        this.x_scale = d3.scaleLinear()
+            .domain([0, this.inf_data.field_max_x])
+            .range([0, this.width]);
+
+        this.y_scale = d3.scaleLinear()
+            .domain([0, this.inf_data.field_max_y])
+            .range([this.height, 0]);
+
+    }
+
+    EpidPlot.prototype.draw_circles = function(group_data_array) {
+        let t = d3.transition()
+            .ease(d3.easeQuadInOut)
+            .duration(1000);
+
+        let circle_r = 10;
+
+        group_data_array.map(
+            (x, idx) => {x.id = idx}
+        );
+
+        let circles = this.plot.selectAll("circle")
+                            .data(group_data_array);
+
+        circles.enter()
+            .append("circle")
+            .attr("cx", d => this.x_scale(d[0][0]))
+            .attr("cy", d => this.y_scale(d[0][1]))
+            .attr("r", circle_r)
+            .style("fill", "purple")
+            .style("fill-opacity", 0)
+            .attr("stroke", "black")
+            .attr("stroke-width", 1.5);
+
+        circles.transition(t)
+            .style("fill-opacity", d =>  (d[2]/this.inf_data.inf_data.desease_duration).toFixed(1))
+            .attr("cx", d => this.x_scale(d[0][0]))
+            .attr("cy", d => this.y_scale(d[0][1]));
+
+        let rects = this.plot.selectAll("rect").data(group_data_array.filter(
+                d => d[1],
+                d => d.id));
+
+        rects.enter()
+            .append("rect")
+            .attr("x", d => this.x_scale(d[0][0] - this.x_scale.reverse(circle_r)))
+            .attr("y", d => this.y_scale(d[0][1] - this.y_scale.reverse(circle_r)))
+            .attr("height", 20)
+            .attr("width", 20)
+            .attr("stroke", "#2378ae")
+            .style("fill", "none");
+    
+        // setTimeout(function() {
+        //     rects
+            
+        // }, 1000)
+        
+        rects.exit()
+            .remove();
+
+        rects.transition(t)
+            .attr("x", d => this.x_scale(d[0][0] - circle_r))
+            .attr("y", d => this.y_scale(d[0][1] - circle_r));
+    }
+
+    EpidPlot.prototype.draw_axes = function() {
+        let x_axis = d3.axisBottom()
+                    .scale(this.x_scale)
+                    .ticks(10);
+
+        let y_axis = d3.axisLeft()
+                    .scale(this.y_scale)
+                    .ticks(10);
+
+        this.plot.append("g")
+            .call(x_axis)
+            .attr('transform', 'translate(0,' + this.height+ ')');
+
+        this.plot.append("g")
+            .call(y_axis);
+    }
+
+    let epid_plot = new EpidPlot("svg", 600, 600);
+
+    {
+        let Http = new XMLHttpRequest();
+        let url='/meta';
+        Http.open("GET", url, false);
+        Http.send(null);
+
+        if (Http.status === 200) {
+            let inf_data = JSON.parse(Http.responseText);
+            epid_plot.set_inf_data(inf_data);
+            epid_plot.set_scales();
+            epid_plot.draw_axes();
+        }
+    }
+
+    
+    // set inf metadata
+    // epid_plot.set_inf_data
+    // websocket on_data draw_circles()
+    // while (True) {
     const Http = new XMLHttpRequest();
     const url='/api';
     Http.open("GET", url, false);
     Http.send(null);
 
     if (Http.status === 200) {
-        draw_circles(JSON.parse(Http.responseText))
+        let group_data = JSON.parse(Http.responseText);
+        epid_plot.draw_circles(group_data["ind_group"]);
     }
 
-    setTimeout(get_circles, 1000);
-}
+    //     setTimeout(get_circles, 1000);
+    // }
 
-function draw_circles(group_data) {
-    var group_data_array = group_data["ind_group"]
-
-    var group_data_array = group_data_array.map(
-        function(x, idx) {
-            x.id = idx;
-            return x;
-        }
-    );
-
-
-    var t = d3.transition()
-        .ease(d3.easeQuadInOut)
-        .duration(1000);
-
-    var svgContainer = d3.select("svg")
-    if (svgContainer.empty()) {
-        var svgContainer = d3.select("body").append("svg")
-                                            .attr("width", 600)
-                                            .attr("height", 600);
-    }
-
-    var circles = svgContainer.selectAll("circle")
-                            .data(group_data_array)
-
-    circles.enter()
-        .append("circle")
-        .attr("cx", function (d) { return d[0][0] * 6; })
-        .attr("cy", function (d) { return d[0][1] * 6; })
-        .attr("r", 10)
-        .style("fill", "purple")
-        .style("fill-opacity", 0)
-        .attr("stroke", "black")
-        .attr("stroke-width", 2);
-
-    circles
-        .style("fill-opacity", function (d) { 
-                console.log(d[2]/15)
-                d[2]/15
-            } )
-        .transition(t)
-        .attr("cx", function (d, i) { return d[0][0] * 6; })
-        .attr("cy", function (d) { return d[0][1] * 6; })
-
-    var rects = svgContainer
-            .selectAll("rect")
-            .data(group_data_array.filter(
-                function(d) {
-                    return d[1];
-                }),
-                function(d) {
-                    return d.id;
-                })
-    
-    setTimeout(function() {
-        rects
-        .enter()
-        .append("rect")
-        .attr("x", function (d) { return d[0][0] * 6 - 10; })
-        .attr("y", function (d) { return d[0][1] * 6 - 10; })
-        .attr("stroke", "#2378ae")
-        .attr("height", 20)
-        .attr("width", 20)
-        .style("fill", "rgba(0,0,0,0)");
-    }, 1000)
-    
-    rects
-        .exit()
-        .remove()
-
-    rects
-        .transition(t)
-        .attr("x", function (d, i) { return d[0][0] * 6 - 10; })
-        .attr("y", function (d) { return d[0][1] * 6 - 10; })
-
-}
 </script>
 </body>
 </html>

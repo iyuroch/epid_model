@@ -17,12 +17,17 @@ use error::{Error};
 
 mod epid_sample;
 use epid_sample::individual::{InfectionData};
-use epid_sample::individual_group::IndividualGroup;
+use epid_sample::individual_group::{IndividualGroup, GroupMetadata};
 
 
 #[derive(Serialize)]
 struct MyGroup {
     ind_group: Vec<((u32, u32), bool, Option<u32>)>,
+}
+
+#[derive(Serialize)]
+struct MyMeta {
+    meta_data: GroupMetadata,
 }
 
 struct AppState {
@@ -41,7 +46,16 @@ fn api(req: &HttpRequest<AppState>) -> Result<Json<MyGroup>, Error> {
 
 fn index(_req: &HttpRequest<AppState>) -> Result<NamedFile, Error> {
     // 
-    Ok(NamedFile::open("/home/yurochko/Main/study/epid_model/src/index.html")?)
+    Ok(NamedFile::open("/home/iyuroch/Main/study/epid_model/src/index.html")?)
+}
+
+fn meta(req: &HttpRequest<AppState>) -> Result<Json<MyMeta>, Error> {
+    println!("{:?}", req);
+    let ind_group = req.state().ind_group.lock().unwrap();
+
+    Ok(Json(MyMeta {
+        meta_data: ind_group.get_group_metadata(),
+    }))
 }
 
 fn main() {
@@ -49,7 +63,7 @@ fn main() {
     env_logger::init();
 
     let inf_data = InfectionData::new(
-        15, 1.0, 6, 3,
+        15, 1.0, 6, 2,
     );
 
     let new_ind = Arc::new(Mutex::new(IndividualGroup::new(
@@ -64,6 +78,7 @@ fn main() {
             .middleware(middleware::Logger::default())
             .resource("/", |r| r.f(index))
             .resource("/api", |r| r.f(api))
+            .resource("/meta", |r| r.f(meta))
     }).bind("127.0.0.1:8080")
         .unwrap()
         .start();

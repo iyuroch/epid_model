@@ -15,11 +15,13 @@
 // TODO: concurrency
 // TODO: cargo test - rewrite
 // TODO: status -> can be useful
+// TODO: metadata per individual
 
 // TODO: birthray/deathrate
 // TODO: immune system fighting off
 // TODO: vaccination
 
+// TODO: dynamic of desease
 
 pub mod individual {
     extern crate rand;
@@ -34,6 +36,7 @@ pub mod individual {
 
     #[derive(Copy, Clone)]
     #[derive(Debug)]
+    #[derive(Serialize)]
     pub struct InfectionData {
         pub desease_duration:  u32,
         pub contagious_ind:    f32,
@@ -309,10 +312,18 @@ pub mod individual_group {
 
     use super::individual::{Individual, InfectionData};
 
+    // #[derive(Serialize)]
     pub struct IndividualGroup {
         group: Vec<Individual>,
         inf_data: InfectionData,
         group_size: u32,
+        field_max_x: i32,
+        field_max_y: i32,
+    }
+
+    #[derive(Serialize)]
+    pub struct GroupMetadata {
+        inf_data: InfectionData,
         field_max_x: i32,
         field_max_y: i32,
     }
@@ -423,16 +434,25 @@ pub mod individual_group {
             }
         }
 
+        pub fn get_group_metadata(&self) -> GroupMetadata {
+            let metadata = GroupMetadata {
+                inf_data: self.inf_data,
+                field_max_x: self.field_max_x,
+                field_max_y: self.field_max_y,
+            };
+            return metadata;
+        }
+
 
         #[allow(dead_code)]
         pub fn get_size(&self) -> u32 {
             self.group_size
         }
 
-        #[allow(dead_code)]
-        pub fn get_inf_data(&self) -> InfectionData {
-            self.inf_data
-        }
+        // #[allow(dead_code)]
+        // pub fn get_inf_data(&self) -> InfectionData {
+        //     self.inf_data
+        // }
 
         #[allow(dead_code)]
         pub fn get_individuals(&self) -> Vec<((u32, u32), bool, Option<u32>)> {
