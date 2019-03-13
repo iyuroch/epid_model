@@ -19,6 +19,8 @@
     // TODO: add plot of infected/health
     // TODO: add label for inf metadata
 
+    
+
     function EpidPlot(parent_el, height, width) {
         this.margin = {top: 20, right: 80, bottom: 100, left: 30}
 
@@ -124,19 +126,35 @@
 
     let epid_plot = new EpidPlot("svg", 600, 600);
 
-    {
-        let Http = new XMLHttpRequest();
-        let url='/meta';
-        Http.open("GET", url, false);
-        Http.send(null);
-
-        if (Http.status === 200) {
-            let inf_data = JSON.parse(Http.responseText);
-            epid_plot.set_inf_data(inf_data);
-            epid_plot.set_scales();
-            epid_plot.draw_axes();
-        }
+    var websocket = new WebSocket("ws://127.0.0.1:8081");
+    websocket.onopen = (e) => {
+        exampleSocket.send("get_meta");
     }
+    
+    websocket.onmessage = (event) => {
+        console.log(event.data);
+        // var jsonObject = JSON.parse(event.data);
+        // console.log(jsonObject);
+        // // if jsonObject contains meta
+        // epid_plot.set_inf_data(inf_data);
+        // epid_plot.set_scales();
+        // epid_plot.draw_axes();
+        // // else
+        // epid_plot.draw_circles(group_data["ind_group"]);
+    }
+
+    // {
+    //     let Http = new XMLHttpRequest();
+    //     let url='/meta';
+    //     Http.open("GET", url, false);
+    //     Http.send(null);
+
+    //     if (Http.status === 200) {
+    //         let inf_data = JSON.parse(Http.responseText);
+            
+            
+    //     }
+    // }
 
     
     // set inf metadata
@@ -150,7 +168,7 @@
 
     if (Http.status === 200) {
         let group_data = JSON.parse(Http.responseText);
-        epid_plot.draw_circles(group_data["ind_group"]);
+        
     }
 
     //     setTimeout(get_circles, 1000);

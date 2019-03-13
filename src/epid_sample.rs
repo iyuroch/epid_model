@@ -306,6 +306,8 @@ pub mod individual {
 }
 
 pub mod individual_group {
+    extern crate rayon;
+    use rayon::prelude::*;
 
     extern crate rand;
     use rand::Rng;
@@ -457,6 +459,18 @@ pub mod individual_group {
         #[allow(dead_code)]
         pub fn get_individuals(&self) -> Vec<((u32, u32), bool, Option<u32>)> {
             self.group.iter().map(
+                |individual| {
+                    (individual.get_position(),
+                     individual.get_status(),
+                     individual.get_des_day(),
+                    )
+                }
+            ).collect()
+        }
+
+        #[allow(dead_code)]
+        pub fn par_get_individuals(&self) -> Vec<((u32, u32), bool, Option<u32>)> {
+            self.group.par_iter().map(
                 |individual| {
                     (individual.get_position(),
                      individual.get_status(),
