@@ -243,7 +243,6 @@ pub mod individual {
             self.contagious
         }
 
-        // #[allow(dead_code)]
         fn walk(&mut self, diff: (i32, i32)) {
             // should be able to move individual
             // on the field
@@ -314,7 +313,6 @@ pub mod individual_group {
 
     use super::individual::{Individual, InfectionData};
 
-    // #[derive(Serialize)]
     pub struct IndividualGroup {
         group: Vec<Individual>,
         inf_data: InfectionData,
@@ -450,11 +448,6 @@ pub mod individual_group {
         pub fn get_size(&self) -> u32 {
             self.group_size
         }
-
-        // #[allow(dead_code)]
-        // pub fn get_inf_data(&self) -> InfectionData {
-        //     self.inf_data
-        // }
 
         #[allow(dead_code)]
         pub fn get_individuals(&self) -> Vec<((u32, u32), bool, Option<u32>)> {

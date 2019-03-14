@@ -36,11 +36,6 @@
                         "," + this.margin.top + ")");
     }
 
-    EpidPlot.prototype.set_inf_data = function(metadata) {
-        this.inf_data = metadata["meta_data"];
-        console.log(this.inf_data);
-    }
-
     EpidPlot.prototype.set_scales = function() {
         this.x_scale = d3.scaleLinear()
             .domain([0, this.inf_data.field_max_x])
@@ -124,55 +119,30 @@
             .call(y_axis);
     }
 
+    EpidPlot.prototype.initialize = function(metadata) {
+        console.log(this);
+        this.inf_data = metadata;
+        this.set_scales();
+        this.draw_axes();
+    }
+
     let epid_plot = new EpidPlot("svg", 600, 600);
 
-    var websocket = new WebSocket("ws://127.0.0.1:8081");
+    let websocket = new WebSocket("ws://127.0.0.1:8081");
+
+    let match_fun = {
+        "ind_group": "draw_circles",
+        "meta_data": "initialize"
+    }
+
     websocket.onopen = (e) => {
-        exampleSocket.send("get_meta");
+        websocket.send("get_meta");
     }
     
     websocket.onmessage = (event) => {
-        console.log(event.data);
-        // var jsonObject = JSON.parse(event.data);
-        // console.log(jsonObject);
-        // // if jsonObject contains meta
-        // epid_plot.set_inf_data(inf_data);
-        // epid_plot.set_scales();
-        // epid_plot.draw_axes();
-        // // else
-        // epid_plot.draw_circles(group_data["ind_group"]);
+        var jsonAnswer = JSON.parse(event.data);
+        epid_plot[match_fun[jsonAnswer["name"]]](jsonAnswer["data"]);
     }
-
-    // {
-    //     let Http = new XMLHttpRequest();
-    //     let url='/meta';
-    //     Http.open("GET", url, false);
-    //     Http.send(null);
-
-    //     if (Http.status === 200) {
-    //         let inf_data = JSON.parse(Http.responseText);
-            
-            
-    //     }
-    // }
-
-    
-    // set inf metadata
-    // epid_plot.set_inf_data
-    // websocket on_data draw_circles()
-    // while (True) {
-    const Http = new XMLHttpRequest();
-    const url='/api';
-    Http.open("GET", url, false);
-    Http.send(null);
-
-    if (Http.status === 200) {
-        let group_data = JSON.parse(Http.responseText);
-        
-    }
-
-    //     setTimeout(get_circles, 1000);
-    // }
 
 </script>
 </body>

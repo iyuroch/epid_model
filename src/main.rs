@@ -6,6 +6,7 @@ extern crate tokio;
 extern crate tokio_threadpool;
 extern crate tokio_tungstenite;
 extern crate tungstenite;
+extern crate serde_json;
 
 #[macro_use] 
 extern crate serde_derive;
@@ -25,6 +26,7 @@ use tokio::net::TcpListener;
 use tokio_threadpool::blocking;
 use tungstenite::protocol::Message;
 use tokio_tungstenite::accept_async;
+use serde_json::json;
 
 mod epid_sample;
 use epid_sample::individual::{InfectionData};
@@ -32,18 +34,6 @@ use epid_sample::individual_group::{IndividualGroup, GroupMetadata};
 
 mod static_server;
 use static_server::static_server::*;
-
-fn fibonacci(n: u32) -> u128 {
-    let mut x_0: u128 = 0;
-    let mut x_1: u128 = 1;
-	// let (x_0: u128, mut x_1: u128) = (0, 1);
-	for _ in 0..n {
-		let y = x_0;
-		x_0 = x_1;
-		x_1 = y + x_1;
-	}
-	x_1
-}
 
 
 // #[derive(Serialize)]
@@ -80,18 +70,11 @@ fn fibonacci(n: u32) -> u128 {
 
 fn main() {
 
-    let act = thread::spawn(move || {
+    let _act = thread::spawn(move || {
         run();
     });
 
-    // let inf_data = InfectionData::new(
-    //     15, 1.0, 6, 2,
-    // );
-
-    // let new_ind = Arc::new(Mutex::new(IndividualGroup::new(
-    //     100, 100, 6, 30, 5, inf_data,
-    // )));
-
+    
     let addr = env::args().nth(1).unwrap_or("127.0.0.1:8081".to_string());
     let addr = addr.parse().unwrap();
 
@@ -111,31 +94,69 @@ fn main() {
             let (sink, stream) = ws_stream.split();
             let sink_cell = Arc::new(Mutex::new(sink));
 
+            let inf_data = InfectionData::new(
+                15, 1.0, 6, 2,
+            );
+
+            let new_group = Arc::new(Mutex::new(IndividualGroup::new(
+                100, 100, 6, 30, 5, inf_data,
+            )));
+
+            let reader_sink_cell = sink_cell.clone();
+            let reader_new_group = new_group.clone();
+
             let ws_reader = stream.for_each(move |message: Message| {
-                println!("Received a message from {}: {}", addr, message);
+                // we match "client" requests here and send them response
+                // this is some type of rpc
+                // it might be better idea to implement this with
+                // basic rest api, but why not this way?)
+                match message.to_text().unwrap() {
+                    "get_meta" => {
+                        let mut sink = reader_sink_cell.lock().unwrap();
+                        let new_group = reader_new_group.lock().unwrap();
+                        sink.start_send(Message::from(json!(
+                            {
+                                "name": "meta_data",
+                                "data": new_group.get_group_metadata()
+                            }
+                        ).to_string())).unwrap();
+                    },
+                    _ => {},
+                }
+                // println!("Received a message from {}: {}", addr, message);
                 Ok(())
             });
-			
-			let counter = Arc::new(Mutex::new(0));
+
+            // let sink_cell = sink_cell.clone();
 
 			let ws_writer = Interval::new_interval(Duration::from_millis(3000))
 							.for_each(move |_| {
 
-                                let counter = counter.clone();
+                                let new_group = new_group.clone();
                                 let sink_cell = sink_cell.clone();
 
 								let fut = lazy(move || {
                                     let sink_cell = sink_cell.clone();
-                                    let counter = counter.clone();
+                                    let new_group = new_group.clone();
 									poll_fn(move || {
+                                        let turn_num = 1;
                                         let sink_cell = sink_cell.clone();
-                                        let counter = counter.clone();
+                                        let new_group = new_group.clone();
 										blocking(move || {
-                                            let mut counter = counter.lock().unwrap();
-                                            *counter += 1;
-											let msg = fibonacci(*counter);
+                                            // first we need to get individuals
+                                            // then push information about their position
+                                            // through sink
+                                            // and make turn
+                                            let mut new_group = new_group.lock().unwrap();
+                                            new_group.get_individuals();
                                             let mut sink = sink_cell.lock().unwrap();
-                                            sink.start_send(Message::from(msg.to_string())).unwrap();
+                                            sink.start_send(Message::from(json!(
+                                                {
+                                                    "name": "ind_group",
+                                                    "data": new_group.get_individuals()
+                                                }
+                                            ).to_string())).unwrap();
+                                            new_group.make_turns(turn_num);
 										}).map_err(|_| panic!("the threadpool shut down"))
 									})
 								});
@@ -164,6 +185,5 @@ fn main() {
 
     tokio::run(srv.map_err(|_e| ()));
 
-
-    act.join().unwrap();
+    // act.join().unwrap();
 }
