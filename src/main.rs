@@ -30,43 +30,12 @@ use serde_json::json;
 
 mod epid_sample;
 use epid_sample::individual::{InfectionData};
-use epid_sample::individual_group::{IndividualGroup, GroupMetadata};
+use epid_sample::individual_group::{IndividualGroup};
 
 mod static_server;
 use static_server::static_server::*;
 
 
-// #[derive(Serialize)]
-// struct MyGroup {
-//     ind_group: Vec<((u32, u32), bool, Option<u32>)>,
-// }
-
-// #[derive(Serialize)]
-// struct MyMeta {
-//     meta_data: GroupMetadata,
-// }
-
-
-
-// fn api(req: &HttpRequest<AppState>) -> Result<Json<MyGroup>, Error> {
-//     println!("{:?}", req);
-//     let mut ind_group = req.state().ind_group.lock().unwrap();
-//     ind_group.make_turns(1);
-
-//     Ok(Json(MyGroup {
-//         ind_group: ind_group.get_individuals(),
-//     }))
-// }
-
-
-// fn meta(req: &HttpRequest<AppState>) -> Result<Json<MyMeta>, Error> {
-//     println!("{:?}", req);
-//     let ind_group = req.state().ind_group.lock().unwrap();
-
-//     Ok(Json(MyMeta {
-//         meta_data: ind_group.get_group_metadata(),
-//     }))
-// }
 
 fn main() {
 
@@ -93,9 +62,10 @@ fn main() {
             // reading and writing halves separately.
             let (sink, stream) = ws_stream.split();
             let sink_cell = Arc::new(Mutex::new(sink));
+            let ms_interval = 500;
 
             let inf_data = InfectionData::new(
-                15, 1.0, 6, 2,
+                15, 1.0, 6, 4,
             );
 
             let new_group = Arc::new(Mutex::new(IndividualGroup::new(
@@ -117,19 +87,21 @@ fn main() {
                         sink.start_send(Message::from(json!(
                             {
                                 "name": "meta_data",
-                                "data": new_group.get_group_metadata()
+                                "data": {
+                                    "group_metadata": new_group.get_group_metadata(),
+                                    "server_data": {
+                                        "time_interval": ms_interval
+                                    }
+                                }
                             }
                         ).to_string())).unwrap();
                     },
                     _ => {},
                 }
-                // println!("Received a message from {}: {}", addr, message);
                 Ok(())
             });
 
-            // let sink_cell = sink_cell.clone();
-
-			let ws_writer = Interval::new_interval(Duration::from_millis(3000))
+			let ws_writer = Interval::new_interval(Duration::from_millis(ms_interval))
 							.for_each(move |_| {
 
                                 let new_group = new_group.clone();

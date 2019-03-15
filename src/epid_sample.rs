@@ -486,7 +486,7 @@ pub mod individual_group {
                                 self.field_max_y as usize
                             ];
             let infected: Vec<&Individual> = self.group.iter().filter(
-                |individual| individual.get_status() == false
+                |individual| individual.get_status() == true
             ).collect();
 
             for ind in infected.into_iter() {
