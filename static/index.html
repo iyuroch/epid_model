@@ -10,15 +10,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
+    <style>
+        #container {    
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
-    <svg></svg>
+    <div id="container">
+        <svg class="time_plot"></svg>
+        <svg class="epid_plot"></svg>
+    </div>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script>
     // TODO: add inf_metadata setter
     // TODO: add plot of infected/health
     // TODO: add label for inf metadata
-    
+
+    function TimelinePlot(parent_el, height, width) {
+        this.margin = {top: 20, right: 80, bottom: 100, left: 30}
+
+        this.height = height - this.margin.top - this.margin.bottom;
+        this.width = width - this.margin.right - this.margin.left;
+        this.plot = d3.select(parent_el).attr("height", this.height + 
+                    this.margin.top + this.margin.bottom)
+                .attr("width", this.width + 
+                    this.margin.right + this.margin.left)
+            .append("g")
+                .attr("transform",
+                    "translate(" + this.margin.left + 
+                        "," + this.margin.top + ")");
+
+        this.inf_perc_data = [];
+        this.set_scales();
+        this.draw_axes();
+        // on new data:
+        // add new data
+        // rescale scales
+        // and update axis
+        // svg.select('.x.axis')
+        //  .transition()
+        //  .duration(1000)
+        //  .call(xAxis);
+    }
+
+    TimelinePlot.prototype.draw_axes = function() {
+        let x_axis = d3.axisTop()
+                    .scale(this.x_scale)
+                    .ticks(10);
+
+        let y_axis = d3.axisLeft()
+                    .scale(this.y_scale)
+                    .ticks(10);
+
+        this.plot.append("g")
+            .call(x_axis);
+
+        this.plot.append("g")
+            .call(y_axis);
+    }
+
+    TimelinePlot.prototype.rescale = function() {
+        this.x_scale = d3.scaleLinear()
+            .domain([0, this.inf_perc_data.length])
+            .range([0, this.width]);
+    }
+
+    TimelinePlot.prototype.set_scales = function() {
+        this.x_scale = d3.scaleLinear()
+            .domain([0, this.inf_perc_data.length])
+            .range([0, this.width]);
+
+        this.y_scale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([0, this.height]);
+    }
 
     function EpidPlot(parent_el, height, width) {
         this.margin = {top: 20, right: 80, bottom: 100, left: 30}
@@ -43,7 +112,6 @@
         this.y_scale = d3.scaleLinear()
             .domain([0, this.inf_data.field_max_y])
             .range([0, this.height]);
-
     }
 
     EpidPlot.prototype.draw_circles = function(group_data_array) {
@@ -122,7 +190,9 @@
         this.draw_axes();
     }
 
-    let epid_plot = new EpidPlot("svg", 600, 600);
+    let epid_plot = new EpidPlot(".time_plot", 600, 600);
+
+    let time_plot = new TimelinePlot(".epid_plot", 600, 600);
 
     let websocket = new WebSocket("ws://127.0.0.1:8081");
 
