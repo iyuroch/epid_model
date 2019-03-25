@@ -45,38 +45,81 @@
                         "," + this.margin.top + ")");
 
         this.inf_perc_data = [];
+        this.plot_proc_line = this.plot.append("path");
+        
+    }
+
+    TimelinePlot.prototype.initialize = function(metadata) {
+        this.inf_data = metadata.group_metadata;
+        this.yield_interval = metadata.server_data.time_interval;
+
+        this.lin_transition = d3.transition()
+            .ease(d3.easeLinear)
+            .duration(this.yield_interval);
+
         this.set_scales();
         this.draw_axes();
-        // on new data:
-        // add new data
-        // rescale scales
-        // and update axis
-        // svg.select('.x.axis')
-        //  .transition()
-        //  .duration(1000)
-        //  .call(xAxis);
     }
 
     TimelinePlot.prototype.draw_axes = function() {
-        let x_axis = d3.axisTop()
+        let x_axis_gen = d3.axisTop()
                     .scale(this.x_scale)
                     .ticks(10);
 
-        let y_axis = d3.axisLeft()
+        let y_axis_gen = d3.axisLeft()
                     .scale(this.y_scale)
                     .ticks(10);
 
-        this.plot.append("g")
-            .call(x_axis);
-
-        this.plot.append("g")
-            .call(y_axis);
+        this.x_axis = this.plot.append("g")
+            .attr("transform", "translate(0, " + this.height + ")");
+        
+        this.y_axis = this.plot.append("g")
+            .call(y_axis_gen);
     }
 
-    TimelinePlot.prototype.rescale = function() {
-        this.x_scale = d3.scaleLinear()
+    TimelinePlot.prototype.redraw_axis = function() {
+        let x_scale = d3.scaleLinear()
             .domain([0, this.inf_perc_data.length])
             .range([0, this.width]);
+
+        let x_axis_gen = d3.axisTop()
+                .scale(x_scale)
+                .ticks();
+
+        this.x_axis.transition(this.lin_transition).call(x_axis_gen);
+    }
+
+    TimelinePlot.prototype.redraw_proc_line = function() {
+
+        let proc_line_gen = d3.line()
+            .curve(d3.curveMonotoneX)
+            .x((_, idx) => { return this.x_scale(idx);})
+            .y((d) => { return this.y_scale(d); });
+
+        this.plot_proc_line
+            .data([this.inf_perc_data])
+            .style("fill", "none")
+            .style("stroke", "steelblue")
+            .style("stroke-width", "2px")
+            .attr("d", proc_line_gen);
+    }
+
+    TimelinePlot.prototype.redraw = function(new_data) {
+        // (u32, u32), bool,      Option<u32>
+        // position    contagious disease day
+        
+        // we calculate percentage of sick individual
+        const sick_num = new_data.filter(ind => ind[2] != null).length;
+        const ind_num = new_data.length;
+        const sick_perc = sick_num/ind_num;
+        this.inf_perc_data.push(sick_perc * 100);
+
+        this.set_scales();
+        this.redraw_axis();
+        this.redraw_proc_line();
+        // this.draw_axes();
+        // console.log(sick_perc);
+        // console.log(new_data.length);
     }
 
     TimelinePlot.prototype.set_scales = function() {
@@ -86,7 +129,7 @@
 
         this.y_scale = d3.scaleLinear()
             .domain([0, 100])
-            .range([0, this.height]);
+            .range([this.height, 0]);
     }
 
     function EpidPlot(parent_el, height, width) {
@@ -190,24 +233,46 @@
         this.draw_axes();
     }
 
-    let epid_plot = new EpidPlot(".time_plot", 600, 600);
+    function EvenPlot() {
+        this.epid_plot = new EpidPlot(".time_plot", 600, 600);
+        this.time_plot = new TimelinePlot(".epid_plot", 600, 600);
+        this.match_fun = {
+            "ind_group" : {
+                "epid_plot" : ["draw_circles"],
+                "time_plot" : ["redraw"]
+            },
+            "meta_data" : {
+                "epid_plot" : ["initialize"],
+                "time_plot" : ["initialize"]
+            }
+        }
+    }
 
-    let time_plot = new TimelinePlot(".epid_plot", 600, 600);
+    EvenPlot.prototype.update_data = function(jsonAnswer) {
+        // we have dispatcher based on json answer
+        // so we call function from match_fun
+        // first we match which plot this relates to
+        // then iterate to the functions and update them
+
+        let dispatch_calls = this.match_fun[jsonAnswer["name"]];
+        Object.entries(dispatch_calls).forEach(([key, val]) => {
+            val.forEach((fun) => {
+                this[key][fun](jsonAnswer["data"]);
+            })
+        })
+    }
 
     let websocket = new WebSocket("ws://127.0.0.1:8081");
-
-    let match_fun = {
-        "ind_group": "draw_circles",
-        "meta_data": "initialize"
-    }
+    let even_plot = new EvenPlot();
 
     websocket.onopen = (e) => {
         websocket.send("get_meta");
     }
     
     websocket.onmessage = (event) => {
+        
         var jsonAnswer = JSON.parse(event.data);
-        epid_plot[match_fun[jsonAnswer["name"]]](jsonAnswer["data"]);
+        even_plot.update_data(jsonAnswer);
     }
 
 </script>
